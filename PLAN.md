@@ -84,33 +84,24 @@ Security: secret только на сервере; zod-валидация на �
 
 ## 5. Статус
 
-- [~] 0. Подготовка — доступ к ECORN есть, app `FAQ Manager` создан и задеплоен (`faq-manager-2`).
-  Магазин `test-ecorn-sam-nav.myshopify.com`. `faq_item` там не было → создан через `shopify store execute`
-  (CLI 3.94.3) по спецификации + 5 тестовых записей (`scripts/seed/`). Спросить компанию про нужный магазин.
-- [~] 1. Каркас + auth — код готов, не проверен на реальном магазине
-- [~] 2. Чтение — код готов, не проверен на реальных данных
-- [~] 3. Create/Edit — код готов, не проверен на реальных данных
-- [x] 4. Поиск/фильтры
-- [~] 5. Деплой — Railway: проект `shopify-faq-manager`, сервис `faq-manager`,
-  https://faq-manager-production-e47e.up.railway.app (health OK). Не заданы `SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET`,
-  не выполнен `shopify app deploy`, не установлено на dev store.
-- [~] 6. README — черновик, дописать после проверки; видео — после деплоя
-- [x] Бонус: unit-тесты (маппинг, userErrors, валидация, фильтры)
+- [x] 0. Подготовка — app `FAQ Manager` в организации ECORN, магазин `test-ecorn-sam-nav.myshopify.com`.
+  `faq_item` в магазине не было → создан через `shopify store execute` по спецификации + 5 тестовых записей
+  (`scripts/seed/`).
+- [x] 1. Каркас + auth — embedded, token exchange, проверено в Admin.
+- [x] 2. Чтение — реальные записи в таблице.
+- [x] 3. Create/Edit — проверено на живом магазине; очистка category через `""` подтверждена.
+- [x] 4. Поиск/фильтры.
+- [x] 5. Деплой — Railway, https://faq-manager-production-e47e.up.railway.app; `shopify app deploy`; установлено.
+- [x] 6. README.
+- [ ] 6. Видео 2–3 мин.
+- [x] Бонус: delete + 26 автотестов (маппинг, валидация, фильтры, роуты, CSP) + CI.
 
-Проверено локально: `tsc`, eslint, `next build`, 9 тестов, smoke-тест API (401 без токена / с плохой подписью / с чужим `aud`), CSP-заголовок.
+### Решённые по ходу проблемы
+- `create-next-app` и `npm install` падали в песочнице / на vitest 5 → каркас вручную, vitest 3.
+- `@shopify/shopify-api@15` требует Node 22 → 13.1.0.
+- App Bridge грузился позже гидрации React → ожидание `shopify` перед `idToken()`.
+- Definition не сохранялся через UI → создан через CLI.
 
-### Что нужно после получения доступов
-1. `shopify app config link` → заполнится `client_id` в `shopify.app.toml`.
-2. Проверить в Admin definition `faq_item`: ключи полей (`question`, `answer`, `category`, `active`) и включён ли `publishable`. При расхождении поправить `lib/faq.ts`.
-3. `shopify app dev` → открыть в Admin и проверить:
-   - App Bridge грузится (он должен быть первым `<script>` в `<head>`, а Next вставляет свои чанки раньше — возможен warning);
-   - модалка открывается/закрывается, поля и checkbox реагируют на ввод;
-   - клик по строке таблицы открывает edit;
-   - создание/редактирование видно в Admin → Content → Metaobjects;
-   - очистка category на update (`""`) действительно очищает поле.
-4. `railway variables --set SHOPIFY_API_KEY=... --set SHOPIFY_API_SECRET=...` (перезапустит сервис),
-   `shopify app deploy` (URL уже прописан в `shopify.app.toml`), установить на dev store.
-5. `git init`, первый коммит, push на GitHub.
-6. Дописать AI-раздел README, записать видео.
-
-Оценка оставшегося: ~1–1.5 ч (проверка и правки ~40 мин, деплой ~20 мин, README/видео ~20 мин).
+### Не сделано (осознанно)
+- Пагинация: грузим 50 последних по `updated_at`.
+- Хранилище сессий: токены в памяти, достаточно для одного dev store.

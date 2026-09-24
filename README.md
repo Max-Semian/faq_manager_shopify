@@ -3,6 +3,9 @@
 Embedded Shopify admin app for managing FAQ entries stored as `faq_item` metaobjects.
 Built with Next.js (App Router), TypeScript, Polaris web components and the Shopify GraphQL Admin API.
 
+- Deployed on Railway: https://faq-manager-production-e47e.up.railway.app (only works inside Shopify Admin).
+- Installed on the development store `test-ecorn-sam-nav.myshopify.com` → Apps → FAQ Manager.
+
 ## Features
 
 - Table of up to 50 FAQ entries (question, category, active status), most recently updated first.
@@ -47,6 +50,17 @@ Then put the Railway URL into `application_url` / `redirect_urls` in `shopify.ap
 
 `npm run dev | build | start | lint | typecheck | test`
 
+CI (GitHub Actions) runs lint, typecheck, tests and a production build on every push to `main`.
+
+### Tests
+
+`npm test` runs Vitest:
+- `lib/faq.test.ts` — metaobject ⇄ FaqItem mapping, field serialisation, `userErrors` mapping, validation, filters.
+- `app/api/faqs/routes.test.ts` — route handlers with Shopify mocked: invalid / missing session token → 401 with
+  the App Bridge retry header, misconfiguration → 500, Shopify failures → 401 / 502, validation → 422,
+  non-numeric id → 400, refusing to touch metaobjects of other types → 404, create / update / delete happy paths.
+- `proxy.test.ts` — CSP `frame-ancestors` only trusts a valid `*.myshopify.com` shop.
+
 ## Architecture
 
 ```
@@ -54,16 +68,19 @@ Shopify Admin (iframe)
  └─ Next.js
      ├─ app/layout.tsx              App Bridge + Polaris from Shopify CDN, <meta shopify-api-key>
      ├─ app/page.tsx                table, search, filters, page states
-     ├─ components/FaqModal.tsx     create/edit form
+     ├─ components/FaqModal.tsx     create / edit / delete form
      ├─ app/api/faqs/route.ts       GET list, POST create
-     ├─ app/api/faqs/[id]/route.ts  PATCH update / DELETE
+     ├─ app/api/faqs/[id]/route.ts  PATCH update, DELETE
+     ├─ app/api/health/route.ts     health check for Railway
      ├─ proxy.ts                    CSP frame-ancestors for the embedding shop
-     └─ lib/
-         ├─ shopify.ts   shopify-api config, session token verification, token exchange
-         ├─ api.ts       route wrapper: auth + error → HTTP status mapping
-         ├─ faq.ts       GraphQL operations and metaobject ⇄ FaqItem mapping
-         ├─ validation.ts  shared zod schema (client and server)
-         └─ filter.ts    client-side search / filters
+     ├─ lib/
+     │   ├─ shopify.ts      shopify-api config, session token verification, token exchange
+     │   ├─ api.ts          route wrapper: auth + error → HTTP status mapping
+     │   ├─ faq.ts          GraphQL operations and metaobject ⇄ FaqItem mapping
+     │   ├─ validation.ts   shared zod schema (client and server)
+     │   ├─ filter.ts       client-side search / filters
+     │   └─ client-api.ts   browser fetch wrapper, waits for App Bridge and adds the session token
+     └─ scripts/seed/       GraphQL used to create the faq_item definition and sample entries
 ```
 
 **Auth.** The client gets a session token from App Bridge (`shopify.idToken()`) and sends it as a Bearer
@@ -73,15 +90,16 @@ Tokens are cached in memory per shop; there is no database, so a cold instance s
 
 **Data.** `faq_item` is a merchant-owned definition, so it is queried by its plain type. All field values
 are strings: `active` is serialised as `"true"`/`"false"`; an empty category is omitted on create and sent as
-`""` on update to clear it. The update endpoint takes a numeric id, rebuilds the `gid`, and checks that the
-metaobject is actually a `faq_item` before writing.
+`""` on update to clear it (verified against the live store: the value becomes `null`). The update and delete
+endpoints take a numeric id, rebuild the `gid`, and check that the metaobject is actually a `faq_item` before
+writing.
 
 ## Notes
 
 - The `faq_item` definition was not present on the development store (`test-ecorn-sam-nav`), so I created it
   to match the spec: merchant-owned, type `faq_item`; `question` single-line required, `answer` multi-line
   required, `category` single-line optional, `active` boolean; no Active-draft status. Sample entries were
-  added the same way. The GraphQL used is in `scripts/seed/`:
+  added the same way. The GraphQL used is in `scripts/seed/` (`shopify store` commands need Shopify CLI 3.94+):
 
   ```bash
   shopify store auth --store <shop>.myshopify.com \
@@ -116,6 +134,6 @@ Reviewed / changed AI-generated code:
 
 How generated code was verified:
 - `tsc --strict`, ESLint, production build.
-- Unit tests for field mapping, `userErrors` mapping, validation and filters (`npm test`).
+- 26 automated tests (see [Tests](#tests)), including the auth and error paths of every route.
 - Manual checks: no token / bad signature / wrong `aud` → 401; CSP header per shop; create / edit / delete against live metaobjects on the development store.
 - Read the `@shopify/shopify-api` source to confirm what `decodeSessionToken` validates.
