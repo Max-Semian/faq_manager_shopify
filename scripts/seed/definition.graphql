@@ -1,0 +1,13 @@
+mutation CreateFaqDefinition($definition: MetaobjectDefinitionCreateInput!) {
+  metaobjectDefinitionCreate(definition: $definition) {
+    metaobjectDefinition {
+      id
+      type
+      name
+      displayNameKey
+      capabilities { publishable { enabled } }
+      fieldDefinitions { key name required type { name } }
+    }
+    userErrors { field message code }
+  }
+}

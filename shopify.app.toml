@@ -1,0 +1,16 @@
+client_id = "e1531431271214518c13a8d6f6c007d2"
+name = "FAQ Manager"
+application_url = "https://faq-manager-production-e47e.up.railway.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[access_scopes]
+scopes = "read_metaobjects,write_metaobjects"
+
+[auth]
+redirect_urls = ["https://faq-manager-production-e47e.up.railway.app/api/auth"]
+
+[webhooks]
+api_version = "2026-07"

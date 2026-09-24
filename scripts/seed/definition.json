@@ -1,0 +1,13 @@
+{
+  "definition": {
+    "type": "faq_item",
+    "name": "FAQ item",
+    "displayNameKey": "question",
+    "fieldDefinitions": [
+      { "key": "question", "name": "Question", "type": "single_line_text_field", "required": true },
+      { "key": "answer", "name": "Answer", "type": "multi_line_text_field", "required": true },
+      { "key": "category", "name": "Category", "type": "single_line_text_field", "required": false },
+      { "key": "active", "name": "Active", "type": "boolean", "required": false }
+    ]
+  }
+}
